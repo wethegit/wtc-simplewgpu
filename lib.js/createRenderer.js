@@ -38,8 +38,13 @@ async function createRenderer(app) {
     // Once you submit the command buffer, it is executed on the GPU and cannot be used again.
     app.device.queue.submit([commandBuffer]);
   }
+  const render = async (mesh) => {
+    const renderPass = await start();
+    mesh.render(renderPass);
+    end();
+  }
 
-  return { start, end };
+  return { start, end, render };
 }
 
 export { createRenderer }
