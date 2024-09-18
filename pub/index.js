@@ -9,13 +9,21 @@ const c = document.querySelector("canvas");
 const app = await createApplication({ canvas: c });
 const renderer = await createRenderer(app);
 
+// For now, values should always be arrays, but we need to work out a better way to incorporate buffers
 const uniforms = [
   {
     name: "grid",
     type: 'array',
-    value: [GRID_SIZE, GRID_SIZE],
+    value: [[GRID_SIZE, GRID_SIZE]],
     hasChanged: true,
     binding: 0,
+  },
+  {
+    name: "time",
+    type: 'float',
+    value: 0,
+    hasChanged: true,
+    binding: 1,
   }
 ];
 
@@ -29,6 +37,23 @@ const vertices = new Float32Array([
   .8, .8,
   -.8, .8
 ]);
+const cellStateArrays = [];
+cellStateArrays[0] = new Uint32Array(GRID_SIZE**2);
+cellStateArrays[1] = new Uint32Array(GRID_SIZE**2);
+for (let i = 0; i < cellStateArrays[0].length; i += 3) {
+  cellStateArrays[0][i] = 1;
+}
+for (let i = 0; i < cellStateArrays[1].length; i ++) {
+  cellStateArrays[1][i] = i%2;
+}
+uniforms.push({
+  name: "cellState",
+  type: 'storage',
+  value: cellStateArrays,
+  hasChanged: true,
+  binding: 2,
+});
+console.log(uniforms)
 const mesh = await createMesh(app, {
   vertices, 
   shader: cellShader,
@@ -38,37 +63,13 @@ const mesh = await createMesh(app, {
   uniforms
 });
 
-// const uniformArray = new Float32Array([GRID_SIZE, GRID_SIZE]);
-// console.log(uniformArray.byteLength)
-// const uniformBuffer = app.device.createBuffer({
-//   label: "Grid uniforms",
-//   size: uniformArray.byteLength,
-//   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-// });
-// app.device.queue.writeBuffer(uniformBuffer, 0, uniformArray);
-// const bindGroup = app.device.createBindGroup({
-//   label: "cell render bind group",
-//   layout: mesh.pipeline.getBindGroupLayout(0),
-//   entries: [
-//     {
-//       binding: 0,
-//       resource: {
-//         buffer: uniformBuffer
-//       }
-//     }
-//   ]
-// });
+// renderer.render(mesh);
 
-// // This whole thing can probably be abstracted into a function
-// // Combine the uniforms with the mesh and bind group and send it whole to renderer.render
-// const renderPass = await renderer.start();
-
-// // Set the pipeline to use for the render pass.
-// renderPass.setPipeline(mesh.pipeline);
-// renderPass.setVertexBuffer(0, mesh.buffer);
-// renderPass.setBindGroup(0, bindGroup);
-// renderPass.draw(mesh.length, GRID_SIZE**2); // The second param is the number of instances
-
-// renderer.end();
-
-await renderer.render(mesh);
+const run = (delta) => {
+  const u = uniforms[1];
+  u.value = delta*.0001;
+  u.hasChanged = true;
+  renderer.render(mesh);
+  requestAnimationFrame(run);
+}
+run();
